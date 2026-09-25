@@ -1,0 +1,25 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Query\Definitions;
+
+use App\Query\Attributes\QueryDefinition;
+use Spatie\Permission\Models\Permission;
+
+#[QueryDefinition(
+    paginatePerpage: 15,
+    allowFilter: ['name', 'guard_name'],
+    allowSort: ['name', 'id', 'created_at'],
+    defaultSort: 'id',
+    searchable: ['name'],
+    allowField: ['id', 'name', 'guard_name', 'created_at', 'updated_at'],
+    disablePaginate: true,
+)]
+final class PermissionQueryDefinition extends BaseQueryDefinition
+{
+    public static function model(): string
+    {
+        return Permission::class;
+    }
+}

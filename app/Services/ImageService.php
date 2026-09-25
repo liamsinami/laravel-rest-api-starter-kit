@@ -1,0 +1,139 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services;
+
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\ImageManager;
+use Throwable;
+
+final class ImageService
+{
+    private ImageManager $manager;
+
+    public function __construct()
+    {
+        $this->manager = new ImageManager(new Driver);
+    }
+
+    /**
+     * Determine whether the given file is an image.
+     */
+    public function isImage(UploadedFile|string $file): bool
+    {
+        $mime = $file instanceof UploadedFile ? $file->getClientMimeType() : (mime_content_type($file) ?: '');
+
+        return str_starts_with((string) $mime, 'image/');
+    }
+
+    /**
+     * Determine whether the image can be processed/resampled.
+     */
+    public function isResizable(UploadedFile|string $file): bool
+    {
+        $mime = $file instanceof UploadedFile ? $file->getClientMimeType() : (mime_content_type($file) ?: '');
+
+        return in_array($mime, ['image/jpeg', 'image/png', 'image/webp', 'image/gif'], true);
+    }
+
+    /**
+     * Store and auto-resize image file.
+     */
+    public function store(
+        UploadedFile $file,
+        string $directory = 'images',
+        ?int $maxWidth = 1920,
+        ?int $maxHeight = 1920,
+        int $quality = 80,
+        ?string $disk = null,
+        ?string $customName = null
+    ): string {
+        $targetDisk = $disk ?: (string) config('filesystems.default');
+        $extension = mb_strtolower($file->getClientOriginalExtension() ?: $file->guessExtension() ?: 'jpg');
+        $fileName = $customName ?: Str::uuid()->toString().'.'.$extension;
+        $filePath = mb_rtrim($directory, '/').'/'.$fileName;
+
+        if (! $this->isResizable($file)) {
+            Storage::disk($targetDisk)->putFileAs($directory, $file, $fileName);
+
+            return $filePath;
+        }
+
+        try {
+            $image = $this->manager->decode($file->getRealPath() ?: $file->getPathname());
+
+            if ($maxWidth !== null || $maxHeight !== null) {
+                $image->scaleDown(width: $maxWidth, height: $maxHeight);
+            }
+
+            $encoded = $image->encodeUsingFileExtension($extension, quality: $quality);
+
+            Storage::disk($targetDisk)->put($filePath, (string) $encoded);
+
+            return $filePath;
+        } catch (Throwable) {
+            Storage::disk($targetDisk)->putFileAs($directory, $file, $fileName);
+
+            return $filePath;
+        }
+    }
+
+    /**
+     * Store a cropped square thumbnail.
+     */
+    public function storeThumbnail(
+        UploadedFile $file,
+        string $directory = 'thumbnails',
+        int $size = 300,
+        int $quality = 80,
+        ?string $disk = null
+    ): string {
+        $targetDisk = $disk ?: (string) config('filesystems.default');
+        $extension = mb_strtolower($file->getClientOriginalExtension() ?: $file->guessExtension() ?: 'jpg');
+        $fileName = 'thumb_'.Str::uuid()->toString().'.'.$extension;
+        $filePath = mb_rtrim($directory, '/').'/'.$fileName;
+
+        if (! $this->isResizable($file)) {
+            Storage::disk($targetDisk)->putFileAs($directory, $file, $fileName);
+
+            return $filePath;
+        }
+
+        try {
+            $image = $this->manager->decode($file->getRealPath() ?: $file->getPathname());
+            $image->cover(width: $size, height: $size);
+
+            $encoded = $image->encodeUsingFileExtension($extension, quality: $quality);
+
+            Storage::disk($targetDisk)->put($filePath, (string) $encoded);
+
+            return $filePath;
+        } catch (Throwable) {
+            Storage::disk($targetDisk)->putFileAs($directory, $file, $fileName);
+
+            return $filePath;
+        }
+    }
+
+    /**
+     * Delete an image from storage.
+     */
+    public function delete(?string $path, ?string $disk = null): bool
+    {
+        if (! $path) {
+            return false;
+        }
+
+        $targetDisk = $disk ?: (string) config('filesystems.default');
+
+        if (Storage::disk($targetDisk)->exists($path)) {
+            return Storage::disk($targetDisk)->delete($path);
+        }
+
+        return false;
+    }
+}

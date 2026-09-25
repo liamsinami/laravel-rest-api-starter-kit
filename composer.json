@@ -1,0 +1,136 @@
+{
+    "$schema": "https://getcomposer.org/schema.json",
+    "name": "liamsinami/laravel-rest-api-starter-kit",
+    "type": "project",
+    "description": "Production-ready Laravel REST API starter kit with Sanctum authentication, RBAC, attachments, settings, audit trails, and OpenAPI documentation.",
+    "keywords": [
+        "laravel",
+        "framework"
+    ],
+    "license": "MIT",
+    "require": {
+        "php": "^8.4",
+        "dedoc/scramble": "^0.13.42",
+        "intervention/image": "^4.3",
+        "laravel-notification-channels/fcm": "^6.1",
+        "laravel/chisel": "^0.1.0",
+        "laravel/fortify": "^1.37.2",
+        "laravel/framework": "^13.7",
+        "laravel/sanctum": "^4.0",
+        "laravel/tinker": "^3.0",
+        "league/flysystem-aws-s3-v3": "^3.35",
+        "livewire/flux": "^2.13.1",
+        "livewire/livewire": "^4.1",
+        "maatwebsite/excel": "^4.0",
+        "nunomaduro/essentials": "^1.2",
+        "spatie/laravel-activitylog": "^5.1",
+        "spatie/laravel-backup": "^10.3",
+        "spatie/laravel-permission": "^8.3",
+        "spatie/laravel-query-builder": "^7.3"
+    },
+    "require-dev": {
+        "barryvdh/laravel-ide-helper": "^3.7",
+        "driftingly/rector-laravel": "^2.5",
+        "fakerphp/faker": "^1.24",
+        "larastan/larastan": "^3.10",
+        "laravel/boost": "^2.7",
+        "laravel/pail": "^1.2.5",
+        "laravel/pao": "^1.1",
+        "laravel/pint": "^1.27",
+        "laravel/sail": "^1.53",
+        "mockery/mockery": "^1.6",
+        "nunomaduro/collision": "^8.9.3",
+        "pestphp/pest": "^5.1",
+        "pestphp/pest-plugin-laravel": "^5.0",
+        "pestphp/pest-plugin-type-coverage": "^5.0",
+        "rector/rector": "^2.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/",
+            "Database\\Factories\\": "database/factories/",
+            "Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "setup": [
+            "composer install",
+            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
+            "@php artisan key:generate",
+            "@php artisan migrate --force",
+            "npm install",
+            "npm run build"
+        ],
+        "dev": [
+            "Composer\\Config::disableProcessTimeout",
+            "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve --host=localhost\" \"php artisan queue:listen --tries=1 --timeout=0\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,queue,logs,vite --kill-others"
+        ],
+        "lint": [
+            "./vendor/bin/rector",
+            "./vendor/bin/pint --parallel"
+        ],
+        "lint:check": [
+            "pint --parallel --test"
+        ],
+        "ci:check": [
+            "Composer\\Config::disableProcessTimeout",
+            "@test"
+        ],
+        "test": [
+            "@test:type-coverage",
+            "@test:unit",
+            "@test:lint",
+            "@test:types"
+        ],
+        "post-autoload-dump": [
+            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+            "@php artisan package:discover --ansi"
+        ],
+        "post-update-cmd": [
+            "@php artisan vendor:publish --tag=laravel-assets --ansi --force",
+            "@php artisan boost:update --ansi"
+        ],
+        "post-root-package-install": [
+            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
+        ],
+        "post-create-project-cmd": [
+            "@php artisan key:generate --ansi",
+            "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
+            "@php artisan migrate --graceful --ansi"
+        ],
+        "pre-package-uninstall": [
+            "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"
+        ],
+        "test:lint": [
+            "./vendor/bin/pint --parallel --test",
+            "./vendor/bin/rector --dry-run"
+        ],
+        "test:types": "./vendor/bin/phpstan analyse --memory-limit=-1",
+        "test:type-coverage": "php -d memory_limit=-1 vendor/bin/pest --type-coverage",
+        "test:unit": "php -d memory_limit=-1 vendor/bin/pest"
+    },
+    "extra": {
+        "laravel": {
+            "dont-discover": [],
+            "installer": {
+                "post-create-project": []
+            }
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "php-http/discovery": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
